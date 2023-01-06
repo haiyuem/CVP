@@ -32,8 +32,8 @@ using namespace std;
 #ifndef _RISCV_UARCHSIM_H
 #define _RISCV_UARCHSIM_H
 
-#define RFSIZE 65	// integer: r0-r31.  fp/simd: r32-r63. flags: r64.
-#define RFFLAGS 64	// flags register is r64 (65th register)
+#define RFSIZE 257	// integer: r0-r255. flags: r256.
+#define RFFLAGS 256	// flags register is r256 (257th register)
 
 struct window_t {
    uint64_t retire_cycle;

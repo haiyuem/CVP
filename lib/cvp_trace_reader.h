@@ -43,21 +43,19 @@ For ease of use, gzstream.h and gzstream.C are provided with minor modifications
 //
 // Trace Format :
 // Inst PC 				- 8 bytes
-// Inst Type 				- 1 byte
+// Next Inst PC 	- 8 bytes (next insn or branch tar)
+// Inst Type			- 1 byte
 // If load/storeInst
-//   Effective Address 			- 8 bytes
+//   Effective Address 		- 8 bytes
 //   Access Size (one reg)		- 1 byte
+//   If load: 
+//      Mem Val   - 8 bytes
 // If branch
 //   Taken 				- 1 byte
-//   If Taken
-//     Target				- 8 bytes
 // Num Input Regs 			- 1 byte
 // Input Reg Names 			- 1 byte each
 // Num Output Regs 			- 1 byte
-// Output Reg Names 			- 1 byte each
-// Output Reg Values
-//   If INT (0 to 31) or FLAG (64) 	- 8 bytes each
-//   If SIMD (32 to 63)			- 16 bytes each
+// Output Reg Names			- 1 byte each
 
 #include <fstream>
 #include <iostream>
@@ -112,19 +110,22 @@ struct db_t
   bool is_store;
   uint64_t addr;
   uint64_t size;
+  bool br_taken;
+  uint64_t mem_load_val;
 
   void printInst() const
   {
     static constexpr const char * cInfo[] = {"aluOp", "loadOp", "stOp", "condBrOp", "uncondDirBrOp", "uncondIndBrOp", "fpOp", "slowAluOp" };
 
-    std::cout << "[PC: 0x" << std::hex << pc <<std::dec << " type: "  << cInfo[insn];
+    std::cout << "[PC: 0x" << std::hex << pc << " Next PC: 0x" << next_pc << std::dec << " type: " << cInfo[insn];
       if(insn == InstClass::loadInstClass || insn == InstClass::storeInstClass)
       {
         assert(is_load || is_store);
         std::cout << " ea: 0x" << std::hex << addr << std::dec << " size: " << size;
       }
       if(insn == InstClass::condBranchInstClass || insn == InstClass::uncondDirectBranchInstClass || insn == InstClass::uncondIndirectBranchInstClass)
-        std::cout << " ( tkn:" << (next_pc != pc + 4) << " tar: 0x" << std::hex << next_pc << ") " << std::dec;
+        // std::cout << " ( tkn:" << br_taken << " tar: 0x" << std::hex << next_pc << ") " << std::dec;
+        std::cout << " ( tkn:" << br_taken << std::dec;
 
       if(A.valid)
       {
@@ -158,8 +159,9 @@ struct db_t
 // INT registers are registers 0 to 31. SIMD/FP registers are registers 32 to 63. Flag register is register 64
 enum Offset
 {
-  vecOffset = 32,
-  ccOffset = 64
+  //leave more space for #regs
+  vecOffset = 255,
+  ccOffset = 255
 };
 
 // Trace reader class.
@@ -179,6 +181,7 @@ struct CVPTraceReader
     uint64_t mTarget;
     uint64_t mEffAddr;
     uint8_t mMemSize; // In bytes
+    uint64_t mMemVal;
     uint8_t mNumInRegs;
     std::vector<uint8_t> mInRegs;
     uint8_t mNumOutRegs;
@@ -195,6 +198,7 @@ struct CVPTraceReader
       mPc = mTarget = 0xdeadbeef;
       mEffAddr = 0xdeadbeef;
       mMemSize = 0;
+      mMemVal = 0xdeadbeef;
       mType = undefInstClass;
       mTaken = false;
       mNumInRegs = mNumOutRegs = 0;
@@ -208,7 +212,9 @@ struct CVPTraceReader
       static constexpr const char * cInfo[] = {"aluOp", "loadOp", "stOp", "condBrOp", "uncondDirBrOp", "uncondIndBrOp", "fpOp", "slowAluOp" };
 
       std::cout << "[PC: 0x" << std::hex << mPc << std::dec  << " type: "  << cInfo[mType];
-      if(mType == InstClass::loadInstClass || mType == InstClass::storeInstClass)
+      if(mType == InstClass::loadInstClass)
+        std::cout << " ea: 0x" << std::hex << mEffAddr << std::dec << " size: " << (uint64_t) mMemSize << " val: " << std::hex << mMemVal;
+      if(mType == InstClass::storeInstClass)
         std::cout << " ea: 0x" << std::hex << mEffAddr << std::dec << " size: " << (uint64_t) mMemSize;
 
       if(mType == InstClass::condBranchInstClass || mType == InstClass::uncondDirectBranchInstClass || mType == InstClass::uncondIndirectBranchInstClass)
@@ -224,17 +230,17 @@ struct CVPTraceReader
       {
         if(mOutRegs[i] >= Offset::vecOffset && mOutRegs[i] != Offset::ccOffset)
         {
-          assert(j+1 < mOutRegsValues.size());
-          std::cout << std::dec << (unsigned) mOutRegs[i] << std::hex << " (hi:" << mOutRegsValues[j+1] << " lo:" << mOutRegsValues[j] << ") ";
+          // assert(j+1 < mOutRegsValues.size());
+          std::cout << std::dec << (unsigned) mOutRegs[i] ;
           j += 2;
         }
         else
         {
-          assert(j < mOutRegsValues.size());
-          std::cout << std::dec << (unsigned) mOutRegs[i] << std::hex << " (" << mOutRegsValues[j++] << ") ";
+          // assert(j < mOutRegsValues.size());
+          std::cout << std::dec << (unsigned) mOutRegs[i] ;
         }
       }
-      std::cout << ") ]" << std::endl;
+      std::cout << "} ]" << std::endl;
       std::fflush(stdout);
     }
   };
@@ -316,6 +322,8 @@ struct CVPTraceReader
      inst->insn = mInstr.mType;
      inst->pc = mInstr.mPc;
      inst->next_pc = mInstr.mTarget;
+     inst->br_taken = mInstr.mTaken;
+     inst->mem_load_val = mInstr.mMemVal;
 
      if(mInstr.mNumInRegs >= 1)
      {
@@ -348,7 +356,7 @@ struct CVPTraceReader
        inst->C.valid = false;
 
      // We'll ignore that some ARM instructions have more than 3 inputs
-     // assert(mInstr.mNumInRegs <= 3);
+     assert(mInstr.mNumInRegs <= 3);
 
      if(mInstr.mNumOutRegs >= 1)
      {
@@ -356,7 +364,8 @@ struct CVPTraceReader
        // Flag register is considered to be INT
        inst->D.is_int = mInstr.mOutRegs.at(mCrackRegIdx) < Offset::vecOffset || mInstr.mOutRegs.at(mCrackRegIdx) == Offset::ccOffset;
        inst->D.log_reg = mInstr.mOutRegs[mCrackRegIdx];
-       inst->D.value = mInstr.mOutRegsValues.at(mCrackValIdx);
+       inst->D.value = 0xdeadbeef;
+      //  inst->D.value = mInstr.mOutRegsValues.at(mCrackValIdx);
        // if SIMD register, we processed one more 64-bit lane.
        if(!inst->D.is_int)
          start_fp_reg++;
@@ -403,23 +412,21 @@ struct CVPTraceReader
   // Returns true if something was read from the trace, false if we the trace is over.
   bool readInstr()
   {
-    // Trace Format :
-    // Inst PC 				- 8 bytes
-    // Inst Type			- 1 byte
-    // If load/storeInst
-    //   Effective Address 		- 8 bytes
-    //   Access Size (one reg)		- 1 byte
-    // If branch
-    //   Taken 				- 1 byte
-    //   If Taken
-    //     Target			- 8 bytes
-    // Num Input Regs 			- 1 byte
-    // Input Reg Names 			- 1 byte each
-    // Num Output Regs 			- 1 byte
-    // Output Reg Names			- 1 byte each
-    // Output Reg Values
-    //   If INT (0 to 31) or FLAG (64) 	- 8 bytes each
-    //   If SIMD (32 to 63)		- 16 bytes each
+// Trace Format :
+// Inst PC 				- 8 bytes
+// Next Inst PC 	- 8 bytes (next insn or branch tar)
+// Inst Type			- 1 byte
+// If load/storeInst
+//   Effective Address 		- 8 bytes
+//   Access Size (one reg)		- 1 byte
+//   If load: 
+//      Mem Val   - 8 bytes
+// If branch
+//   Taken 				- 1 byte
+// Num Input Regs 			- 1 byte
+// Input Reg Names 			- 1 byte each
+// Num Output Regs 			- 1 byte
+// Output Reg Names			- 1 byte each
     mInstr.reset();
     start_fp_reg = 0;
     dpressed_input->read((char*) &mInstr.mPc, sizeof(mInstr.mPc));
@@ -432,21 +439,32 @@ struct CVPTraceReader
     mCrackRegIdx = 0;
     mCrackValIdx = 0;
 
-    mInstr.mTarget = mInstr.mPc + 4;
+    //mTarget == next PC
+    dpressed_input->read((char*) &mInstr.mTarget, sizeof(mInstr.mTarget));
+    // mInstr.mTarget = mInstr.mPc + 4;
     dpressed_input->read((char*) &mInstr.mType, sizeof(mInstr.mType));
 
-    assert(mInstr.mType != undefInstClass);
+    // assert(mInstr.mType != undefInstClass);
+    // if (mInstr.mType == undefInstClass){
+    //   // printf("Usage: missing track number : -t <track_number>.\n");
+    //   mInstr.printInstr();
+    //   printf("Type: %d\n", mInstr.mType);
+    //   exit(-1);
+    // }
 
     if(mInstr.mType == InstClass::loadInstClass || mInstr.mType == InstClass::storeInstClass)
     {
       dpressed_input->read((char*) &mInstr.mEffAddr, sizeof(mInstr.mEffAddr));
       dpressed_input->read((char*) &mInstr.mMemSize, sizeof(mInstr.mMemSize));
+      if (mInstr.mType == InstClass::loadInstClass){
+        dpressed_input->read((char*) &mInstr.mMemVal, sizeof(mInstr.mMemVal));
+      }
     }
     if(mInstr.mType == InstClass::condBranchInstClass || mInstr.mType == InstClass::uncondDirectBranchInstClass || mInstr.mType == InstClass::uncondIndirectBranchInstClass)
     {
       dpressed_input->read((char*) &mInstr.mTaken, sizeof(mInstr.mTaken));
-      if(mInstr.mTaken)
-        dpressed_input->read((char*) &mInstr.mTarget, sizeof(mInstr.mTarget));
+      // if(mInstr.mTaken)
+      //   dpressed_input->read((char*) &mInstr.mTarget, sizeof(mInstr.mTarget));
     }
 
     dpressed_input->read((char*) &mInstr.mNumInRegs, sizeof(mInstr.mNumInRegs));
@@ -469,19 +487,28 @@ struct CVPTraceReader
       mInstr.mOutRegs.push_back(outReg);
     }
 
-    for(auto i = 0; i != mInstr.mNumOutRegs; i++)
-    {
-      uint64_t val;
-      dpressed_input->read((char*) &val, sizeof(val));
-      mInstr.mOutRegsValues.push_back(val);
-      if(mInstr.mOutRegs[i] >= Offset::vecOffset && mInstr.mOutRegs[i] != Offset::ccOffset)
-      {
-        dpressed_input->read((char*) &val, sizeof(val));
-        mInstr.mOutRegsValues.push_back(val);
-        if(val != 0)
-          mRemainingPieces++;
-      }
-    }
+    // for(auto i = 0; i != mInstr.mNumOutRegs; i++)
+    // {
+    //   uint64_t val;
+    //   dpressed_input->read((char*) &val, sizeof(val));
+    //   mInstr.mOutRegsValues.push_back(val);
+    //   if(mInstr.mOutRegs[i] >= Offset::vecOffset && mInstr.mOutRegs[i] != Offset::ccOffset)
+    //   {
+    //     dpressed_input->read((char*) &val, sizeof(val));
+    //     mInstr.mOutRegsValues.push_back(val); //TODO
+    //     if(val != 0)
+    //       mRemainingPieces++;
+    //   }
+    // }
+
+    // //failed attempt: Read next pc and re-position the pointer back to current location 
+    // long long int cur_pos = dpressed_input->tellg();
+    // std::cout << "cur_pos" << std::hex << dpressed_input->cur << std::endl;
+    // if(!mInstr.mTaken){
+    //   dpressed_input->read((char*) &mInstr.mTarget, sizeof(mInstr.mTarget));
+    //   dpressed_input->seekg(-1*sizeof(mInstr.mTarget), std::ios_base::cur);
+    //   std::cout << "cur_pos" << std::ios_base::cur << std::endl;
+    // }
 
     // Memsize has to be adjusted as it is giving only the access size for one register.
     mInstr.mMemSize = mInstr.mMemSize * std::max(1lu, (long unsigned) mInstr.mNumOutRegs);
@@ -492,7 +519,7 @@ struct CVPTraceReader
     if(mInstr.mType == aluInstClass && mInstr.mOutRegs.size() == 0)
     {
       mInstr.mOutRegs.push_back(Offset::ccOffset);
-      mInstr.mOutRegsValues.push_back(0xdeadbeef);
+      // mInstr.mOutRegsValues.push_back(0xdeadbeef);
       mInstr.mNumOutRegs++;
     }
     else if(mInstr.mType == condBranchInstClass && mInstr.mInRegs.size() == 0)
@@ -503,8 +530,8 @@ struct CVPTraceReader
 
     nInstr++;
 
-    if(nInstr % 100000 == 0)
-      std::cout << nInstr << " instrs " << std::endl;
+    // if(nInstr % 100000 == 0)
+    //   std::cout << nInstr << " instrs " << std::endl;
 
     return true;
   }

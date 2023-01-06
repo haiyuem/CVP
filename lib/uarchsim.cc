@@ -194,7 +194,7 @@ void uarchsim_t::step(db_t *inst)
       if (VP_PERFECT)
       {
          PredictionRequest req = get_prediction_req_for_track(fetch_cycle, seq_no, piece, inst);
-         pred.predicted_value = inst->D.value;
+         pred.predicted_value = inst->mem_load_val;
          pred.speculate = predictable && req.is_candidate;
          predictable &= req.is_candidate;
       }
@@ -202,7 +202,7 @@ void uarchsim_t::step(db_t *inst)
       {
          PredictionRequest req = get_prediction_req_for_track(fetch_cycle, seq_no, piece, inst);
          pred = getPrediction(req);
-         speculativeUpdate(seq_no, predictable, ((predictable && pred.speculate && req.is_candidate) ? ((pred.predicted_value == inst->D.value) ? 1 : 0) : 2),
+         speculativeUpdate(seq_no, predictable, ((predictable && pred.speculate && req.is_candidate) ? ((pred.predicted_value == inst->mem_load_val) ? 1 : 0) : 2),
                            inst->pc, inst->next_pc, (InstClass)inst->insn, piece,
                            (inst->A.valid ? inst->A.log_reg : 0xDEADBEEF),
                            (inst->B.valid ? inst->B.log_reg : 0xDEADBEEF),
@@ -359,8 +359,14 @@ void uarchsim_t::step(db_t *inst)
       assert(inst->D.log_reg < RFSIZE);
       if (inst->D.log_reg != RFFLAGS) 
       {
-         squash = (pred.speculate && (pred.predicted_value != inst->D.value));         
-         RF[inst->D.log_reg] = ((pred.speculate && (pred.predicted_value == inst->D.value)) ? fetch_cycle : exec_cycle);
+         squash = (pred.speculate && (pred.predicted_value != inst->mem_load_val)); 
+         spdlog::debug("Speculate: {}, predicted {}, memval {}", pred.speculate, pred.predicted_value, inst->mem_load_val);
+         uint64_t temp_Dcycle = ((pred.speculate && (pred.predicted_value == inst->mem_load_val)) ? fetch_cycle : exec_cycle);
+         RF[inst->D.log_reg] = MAX(temp_Dcycle, RF[inst->D.log_reg]);
+         // if (inst->is_load && (num_inst%1000 == 0)){
+         //    inst->printInst();
+         //    printf("RF out %d: fetch_cycle %d exec_cycle %d cycle %d\n", (int)RF[inst->D.log_reg], (int)fetch_cycle, (int)exec_cycle, (int)cycle);
+         // }
       }
    }
 
@@ -391,7 +397,7 @@ void uarchsim_t::step(db_t *inst)
    window.push({MAX(exec_cycle, (window.empty() ? 0 : window.peektail().retire_cycle)),
                seq_no,
                ((inst->is_load || inst->is_store) ? inst->addr : 0xDEADBEEF),
-               ((inst->D.valid && (inst->D.log_reg != RFFLAGS)) ? inst->D.value : 0xDEADBEEF),
+               ((inst->D.valid && (inst->D.log_reg != RFFLAGS)) ? inst->mem_load_val : 0xDEADBEEF),
 	       latency});
 
    /////////////////////////////
@@ -435,7 +441,7 @@ void uarchsim_t::step(db_t *inst)
          stop = true;
 
       // Taken branch constraint.
-      if (FETCH_STOP_AT_TAKEN && (uncond_direct || uncond_indirect || (cond_branch && (inst->next_pc != (inst->pc + 4)))))
+      if (FETCH_STOP_AT_TAKEN && (uncond_direct || uncond_indirect || (cond_branch && inst->br_taken)))
          stop = true;
 
       if (stop) {
@@ -447,7 +453,7 @@ void uarchsim_t::step(db_t *inst)
    }
 
    // Account for the effect of a mispredicted branch on the fetch cycle.
-   if (!PERFECT_BRANCH_PRED && BP.predict((InstClass) inst->insn, inst->pc, inst->next_pc))
+   if (!PERFECT_BRANCH_PRED && BP.predict((InstClass) inst->insn, inst->pc, inst->next_pc, inst->br_taken))
       fetch_cycle = MAX(fetch_cycle, exec_cycle);
 
    spdlog::debug("Updating base_cycle to {}", MIN(fetch_cycle, prefetcher.get_oldest_pf_cycle()));

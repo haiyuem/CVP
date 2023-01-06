@@ -40,7 +40,7 @@ uint64_t PIPELINE_FILL_LATENCY = 5;
 uint64_t NUM_LDST_LANES = 8;
 uint64_t NUM_ALU_LANES = 16;
 
-bool PREFETCHER_ENABLE = true;
+bool PREFETCHER_ENABLE = false;
 bool PERFECT_CACHE = false;
 bool WRITE_ALLOCATE = true;
 
@@ -53,7 +53,7 @@ uint64_t L1_ASSOC = 8;
 uint64_t L1_BLOCKSIZE = 64;
 uint64_t L1_LATENCY = 3;
 
-uint64_t L2_SIZE = (1 << 20);
+uint64_t L2_SIZE = (1 << 10);
 uint64_t L2_ASSOC = 8;
 uint64_t L2_BLOCKSIZE = 64;
 uint64_t L2_LATENCY = 12;

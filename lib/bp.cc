@@ -56,7 +56,7 @@ bp_t::~bp_t() {
 
 // Returns true if instruction is a mispredicted branch.
 // Also updates all branch predictor structures as applicable.
-bool bp_t::predict(InstClass insn, uint64_t pc, uint64_t next_pc) {
+bool bp_t::predict(InstClass insn, uint64_t pc, uint64_t next_pc, bool br_taken) {
    bool taken;
    bool pred_taken;
    uint64_t pred_target;
@@ -66,7 +66,7 @@ bool bp_t::predict(InstClass insn, uint64_t pc, uint64_t next_pc) {
       // CONDITIONAL BRANCH
 
       // Determine the actual taken/not-taken outcome.
-      taken = (next_pc != (pc + 4));
+      taken = br_taken; // this is a workaround for intel64 instructions - various length, not always PC+4
 
       // Make prediction.
       pred_taken= TAGESCL->GetPrediction (pc);
@@ -153,7 +153,7 @@ bool bp_t::predict(InstClass insn, uint64_t pc, uint64_t next_pc) {
    }
    else {
       // not a control-transfer instruction
-      misp = (next_pc != pc + 4);
+      misp = br_taken;
 
       // Update measurements.
       meas_notctrl_n++;
