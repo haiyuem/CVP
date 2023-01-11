@@ -3,7 +3,8 @@
 This page only documents changes from the original CVP infrastructure. For original documentation, please see [CVP page](https://github.com/haiyuem/CVP/tree/master).
 
 ## Predictor
-This branch uses the original predictor that comes with the CVP simulator. This is the winner predictor of the 2018 competition. For a simpler self-written predictor, see branch [intel64_lastloadpred](https://github.com/haiyuem/CVP/tree/intel64_lastloadpred). 
+This branch uses a simpler self-written predictor. It remembers the last two values seen by the load instruction and only predict when the last two values match. For the award-winning predictor that comes with the CVP simulator, see branch [intel64_winnerpred](https://github.com/haiyuem/CVP/tree/intel64_winnerpred). 
+Besides the predictor, other changes on the simulator are the same as the winnerpred branch.
 
 ## Changes for Intel64 traces
 This study uses PIN tool (TODO: link) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
