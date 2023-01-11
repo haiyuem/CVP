@@ -274,13 +274,16 @@ int main(int argc, char ** argv)
      beginPredictor(0, (char **)NULL);
 
   db_t *inst = nullptr; 
-//   int count = 0;
   while (inst = reader.get_inst()) {
-//   while ((inst = reader.get_inst()) && (count < 10000)){
-   //  reader.mInstr.printInstr();
     sim->step(inst);
     delete inst;
-   //  count++;
+
+   // int count = 0;
+   // while ((inst = reader.get_inst()) && (count < 20000)){
+   //    reader.mInstr.printInstr();
+   //    sim->step(inst);
+   //    delete inst;
+   //    count++;
   }
 
   endPredictor();
