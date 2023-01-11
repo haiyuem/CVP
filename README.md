@@ -1,136 +1,60 @@
-# CVP Infrastructure
 
-## Examples & Tracks
+# CVP for Intel64
+This page only documents changes from the original CVP infrastructure. For original documentation, please see [CVP page](https://github.com/haiyuem/CVP/tree/master).
 
-See Simulator options:
+## Predictor
+This branch uses the original predictor that comes with the CVP simulator. This is the winner predictor of the 2018 competition. For a simpler self-written predictor, see branch [intel64_lastloadpred](https://github.com/haiyuem/CVP/tree/intel64_lastloadpred). 
 
-`./cvp`
+## Changes for Intel64 traces
+This study uses PIN tool (TODO: link) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
 
-Running the simulator on `trace.gz`:
-
-`./cvp trace.gz`
-
-Running with value prediction (`-v`) and predict all instructions (first track, `-t 0`):
-
-`./cvp -v -t 0 trace.gz`
-
-Running with value prediction (`-v`) and predict only loads (second track, `-t 1`):
-
-`./cvp -v -t 1 trace.gz`
-
-Running with value prediction (`-v`) and predict only loads but with hit/miss information (third track, `-t 2`):
-
-`./cvp -v -t 2 trace.gz`
-
-Baseline (no arguments) is equivalent to (prefetcher (`-P`), 512-window (`-w 512`), 8 LDST (`-M 8`), 16 ALU (`-A 16`), 16-wide fetch (`16`) with 16 branches max per cycle (`16`), stop fetch at cond taken (`1`), stop fetch at indirect (`1`), model ICache (`1`)):
-
-`./cvp -P -w 512 -M 8 -A 16 -F 16,16,1,1,1`
-
-## Notes
-
-Run `make clean && make` to ensure your changes are taken into account.
-
-## Value Predictor Interface
-
-See [cvp.h](./cvp.h) header.
-
-## Getting Traces
-
-135 30M Traces @ [TAMU ](http://hpca23.cse.tamu.edu/CVP-1/public_traces/)
-
-2013 100M Traces @ [TAMU ](http://hpca23.cse.tamu.edu/CVP-1/secret_traces/)
-
-
-## Sample Output
-
+### New Trace Format
+```Trace Format :
+Inst PC 		    - 8 bytes
+Next Inst PC 	- 8 bytes (next insn or branch tar)
+Inst Type			- 1 byte
+If load/storeInst
+  Effective Address 		- 8 bytes
+  Access Size (one reg)   - 1 byte
+  If load: 
+     Mem Val   - 8 bytes
+If branch
+   Taken 				- 1 byte
+Num Input Regs 			- 1 byte
+Input Reg Names 			- 1 byte each
+Num Output Regs 			- 1 byte
+Output Reg Names			- 1 byte each
 ```
-VP_ENABLE = 1
-VP_PERFECT = 0
-VP_TRACK = LoadsOnly
-WINDOW_SIZE = 512
-FETCH_WIDTH = 16
-FETCH_NUM_BRANCH = 16
-FETCH_STOP_AT_INDIRECT = 1
-FETCH_STOP_AT_TAKEN = 1
-FETCH_MODEL_ICACHE = 1
-PERFECT_BRANCH_PRED = 0
-PERFECT_INDIRECT_PRED = 0
-PIPELINE_FILL_LATENCY = 5
-NUM_LDST_LANES = 8
-NUM_ALU_LANES = 16
-MEMORY HIERARCHY CONFIGURATION---------------------
-STRIDE Prefetcher = 1
-PERFECT_CACHE = 0
-WRITE_ALLOCATE = 1
-Within-pipeline factors:
-	AGEN latency = 1 cycle
-	Store Queue (SQ): SQ size = window size, oracle memory disambiguation, store-load forwarding = 1 cycle after store's or load's agen.
-	* Note: A store searches the L1$ at commit. The store is released
-	* from the SQ and window, whether it hits or misses. Store misses
-	* are buffered until the block is allocated and the store is
-	* performed in the L1$. While buffered, conflicting loads get
-	* the store's data as they would from the SQ.
-I$: 64 KB, 4-way set-assoc., 64B block size
-L1$: 64 KB, 8-way set-assoc., 64B block size, 3-cycle search latency
-L2$: 1 MB, 8-way set-assoc., 64B block size, 12-cycle search latency
-L3$: 8 MB, 16-way set-assoc., 128B block size, 60-cycle search latency
-Main Memory: 150-cycle fixed search time
-STORE QUEUE MEASUREMENTS---------------------------
-Number of loads: 8278928
-Number of loads that miss in SQ: 7456870 (90.07%)
-Number of PFs issued to the memory system 639484
-MEMORY HIERARCHY MEASUREMENTS----------------------
-I$:
-	accesses   = 31414867
-	misses     = 683314
-	miss ratio = 2.18%
-	pf accesses   = 0
-	pf misses     = 0
-	pf miss ratio = -nan%
-L1$:
-	accesses   = 11380235
-	misses     = 352104
-	miss ratio = 3.09%
-	pf accesses   = 639484
-	pf misses     = 10547
-	pf miss ratio = 1.65%
-L2$:
-	accesses   = 1035418
-	misses     = 217593
-	miss ratio = 21.01%
-	pf accesses   = 10547
-	pf misses     = 5096
-	pf miss ratio = 48.32%
-L3$:
-	accesses   = 217593
-	misses     = 28693
-	miss ratio = 13.19%
-	pf accesses   = 5096
-	pf misses     = 1576
-	pf miss ratio = 30.93%
-BRANCH PREDICTION MEASUREMENTS---------------------
-Type                      n          m     mr  mpki
-All                31414867      28863  0.09%  0.92
-Branch              4202035      22366  0.53%  0.71
-Jump: Direct         664629          0  0.00%  0.00
-Jump: Indirect       706742       6497  0.92%  0.21
-Jump: Return              0          0  -nan%  0.00
-Not control        25841461          0  0.00%  0.00
-ILP LIMIT STUDY------------------------------------
-instructions = 31414867
-cycles       = 21670415
-IPC          = 1.450
-Prefetcher------------------------------------------
-Num Trainings :8278928
-Num Prefetches generated :640803
-Num Prefetches issued :1352783
-Num Prefetches filtered by PF queue :49713
-Num untimely prefetches dropped from PF queue :1319
-Num prefetches not issued LDST contention :713299
-Num prefetches not issued stride 0 :2719377
-CVP STUDY------------------------------------------
-prediction-eligible instructions = 19841790
-correct predictions              = 885532 (4.46%)
-incorrect predictions            = 21692 (0.11%)
- Read 30002325 instrs 
-```
+
+### Simulator Changes
+- All trace format changes in [trace_reader](lib/cvp_trace_reader.h)
+- Intel64 has different instruction lengths, CVP cannot blindly use pc+4 for next_pc
+	- Add br_taken to indicate if branch is truely taken instead of comparing pc and pc+4, changes in [struct db_t in trace_reader](lib/cvp_trace_reader.h), [bp.cc](lib/bp.cc) and [bp.h](lib/bp.h)
+	- Read the next pc as non-branch target
+	-  In 
+- Intel64 uses 1 byte to represent reg id, change number of regs to 256 (1 byte) and flag at 257th reg in [uarchsim.h](lib/uarchsim.h)
+	- The new simulator does not differentiate int and fp regs, assuming everything is int
+- Intel64 uses fused instructions: one mov instruction can do both load and ALU, so the output reg does not hold the immediate loaded value (as assumed in original simulator design), and we need to predict the loaded value, not the output reg value
+	- Use mem_load_val instead of D out reg value in [uarchsim](lib/uarchsim.cc) and [trace_reader](lib/cvp_trace_reader.h) 
+- Need to split fused instructions into two parts
+	- Splitting is done in trace generation
+	- Labeled as piece 0 and piece 1, using original infrastructure for fp insts
+	- Both pieces of the splitted instruction has the same PC, same output reg, but change the input reg for the ALU inst in load-ALU fused inst to be the output reg of the inst
+		- Preserve reg dependency, so that the ALU inst's output reg ready cycle does not overwrite the load's ready cycle
+		- Under current infrastructure, the ready cycle of D output reg should always be the max cycle of current ready cycle and newly calculated ready cycle ([changes](https://github.com/eric-rotenberg/CVP/compare/master...haiyuem:CVP:intel64_winnerpred#diff-c4faaeb8327ecf2717410934e4034bc98c857d12d60a59f19fa6ad6d7c2eed73R365))
+- [Parameter changes](lib/parameters.cc): 
+	- Turn off prefetch 
+	- Reduce L2 size to gauge more prediction benefits (optional)
+
+## Key Features of CVP
+Just for documentation. 
+
+- Simulator only accepts max 3 input regs and 1 output reg per each instruction
+	- This is constrained in trace generation in PIN
+- 16 ALU lanes, 8 ldst lanes
+- How cycles are calculated: fetch_cycle (ins fetch) + pipeline latency, reg dependency, speculation
+	- correct prediction: set early release time for out reg
+- Speculate: knows result directly, if wrong prediction, set fetch_cycle <- last ins retire cycle (wait till everything is done) 
+
+
+> Written with [StackEdit](https://stackedit.io/).
