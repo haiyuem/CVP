@@ -1,2 +1,4 @@
-**/lib/*.o
-**/lib/*.a
+lib/*.o
+lib/*.a
+cvp
+*.o
