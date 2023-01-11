@@ -1,4 +1,6 @@
 # CVP Infrastructure
+This is the original CVP simulator forked from the competition repo. See two branches for modified simulators for this study.
+Below is the original README:
 
 ## Examples & Tracks
 
