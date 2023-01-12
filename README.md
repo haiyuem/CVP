@@ -7,7 +7,7 @@ This branch uses a simpler self-written predictor. It remembers the last two val
 Besides the predictor, other changes on the simulator are the same as the winnerpred branch.
 
 ## Changes for Intel64 traces
-This study uses PIN tool (TODO: link) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
+This study uses [PIN tool](https://github.com/haiyuem/pintool) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
 
 ### New Trace Format
 ```Trace Format :
