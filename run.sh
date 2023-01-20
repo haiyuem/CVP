@@ -1,19 +1,26 @@
-#sketch
-# ./cvp /home/haiyue/research/value_prediction/sketch/trace_sketch_10x200 > sketch_10x200_base.log
-# ./cvp -v -p -t 2 /home/haiyue/research/value_prediction/sketch/trace_sketch_10x200 > sketch_10x200_perfect.log
-# ./cvp -v -t 2 /home/haiyue/research/value_prediction/sketch/trace_sketch_10x200 > sketch_10x200_predict_winnerpred.log
-# ./cvp /home/haiyue/research/value_prediction/sketch/trace_sketch_unroll_10x200 > sketch_unroll_10x200_base.log
-# ./cvp -v -p -t 2 /home/haiyue/research/value_prediction/sketch/trace_sketch_unroll_10x200 > sketch_unroll_10x200_perfect.log
+L2_size_dir=L2size_1M
+dir=logs/${L2_size_dir}
+##tag and trace for three workloads
+tag_sketch=sketch_10x200
+trace_sketch=/home/haiyue/research/value_prediction/Value-Prediction-for-Input-Data-Commonality/sketch/trace_${tag_sketch}
+tag_mjpeg=mpeg2enc_1img_libmpeg2encpp
+trace_mjpeg=/home/haiyue/research/value_prediction/mjpegtools/image/lane_detection/trace_${mpeg2enc_1img_libmpeg2encpp}
+tag_lane=lane_det_ATL_spNBmm_b1
+trace_lane=/home/haiyue/research/ultra_fast_lane_detection/lane_detect_convert/caffe_lane_detection/trace_${tag_lane}
 
-# ./cvp /home/haiyue/research/value_prediction/sketch/trace_sketch_diffval_100x20 > sketch_diffval_100x20_base.log
-# ./cvp -v -p -t 2 /home/haiyue/research/value_prediction/sketch/trace_sketch_diffval_100x20 > sketch_diffval_100x20_perfect.log
-# ./cvp -v -t 2 /home/haiyue/research/value_prediction/sketch/trace_sketch_diffval_100x20 > sketch_diffval_100x20_predict_winnerpred.log
+##three runs: baseline, perfect, prediction
+
+#sketch
+# ./cvp ${trace_sketch} > ${dir}/${tag_sketch}_base.log
+# ./cvp -v -p -t 2 ${trace_sketch} > ${dir}/${tag_sketch}_perfect.log
+# ./cvp -v -t 2 ${trace_sketch} > ${dir}/${tag_sketch}_predict_winner2020.log
 
 #mjpeg
-# ./cvp /home/haiyue/research/value_prediction/mjpegtools/image/lane_detection/trace_mpeg2enc_1img_libmpeg2encpp > mpeg2enc_1img_libmpeg2encpp_base.log
-# ./cvp -v -p -t 2 /home/haiyue/research/value_prediction/mjpegtools/image/lane_detection/trace_mpeg2enc_1img_libmpeg2encpp > mpeg2enc_1img_libmpeg2encpp_perfect.log
-# ./cvp -v -t 2 /home/haiyue/research/value_prediction/mjpegtools/image/lane_detection/trace_mpeg2enc_1img_libmpeg2encpp > mpeg2enc_1img_libmpeg2encpp_predict.log
+# ./cvp ${trace_mjpeg} > ${dir}/${tag_mjpeg}_base.log
+# ./cvp -v -p -t 2 ${trace_mjpeg} > ${dir}/${tag_mjpeg}_perfect.log
+# ./cvp -v -t 2 ${trace_mjpeg} > ${dir}/${tag_mjpeg}_predict_winner2020.log
 
 #Lane detection
-# ./cvp /home/haiyue/research/ultra_fast_lane_detection/lane_detect_convert/caffe_lane_detection/pin/trace_lane_det_ATL_spNBmm_b1 > lane_det_ATL_spNBmm_b1_base.log
-# ./cvp -v -p -t 2 /home/haiyue/research/ultra_fast_lane_detection/lane_detect_convert/caffe_lane_detection/pin/trace_lane_det_ATL_spNBmm_b1 > lane_det_ATL_spNBmm_b1_perfect.log
+./cvp ${trace_lane} > ${dir}/${tag_lane}_base.log
+# ./cvp -v -p -t 2 ${trace_lane} > ${dir}/${tag_lane}_perfect.log
+# ./cvp -v -t 2 ${trace_lane} > ${dir}/${tag_lane}_predict_winner2020.log

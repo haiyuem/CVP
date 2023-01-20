@@ -83,10 +83,13 @@ UpdateVSEPPred (ForUpdate * U, uint64_t actual_value, int actual_latency);
 
 
 
-bool
-getPrediction (uint64_t seq_no, uint64_t pc, uint8_t piece,
-	       uint64_t & predicted_value)
+PredictionResult getPrediction(const PredictionRequest& req)
 {
+	uint64_t seq_no = req.seq_no;
+	uint64_t pc = req.pc;
+	uint8_t piece = req.piece;
+	PredictionResult result;
+
     /** BEGIN FOR HCVP **/
   InstInfo
     inst_info
@@ -107,7 +110,7 @@ getPrediction (uint64_t seq_no, uint64_t pc, uint8_t piece,
   U->predvsep = false;
 
 #ifdef STRIDEON
-  getPredStride (U, predicted_value, seq_no);
+  getPredStride (U, result.predicted_value, seq_no);
 #endif
 #ifdef  HCVPON
     /** BEGIN FOR HCVP **/
@@ -118,23 +121,23 @@ getPrediction (uint64_t seq_no, uint64_t pc, uint8_t piece,
       corr_prediction = VP.getPrediction (seq_no, inst_info);
     if (std::get < 0 > (corr_prediction))
       {
-	predicted_value = std::get < 1 > (corr_prediction);
-	U->predicted_value = predicted_value;
+	result.predicted_value = std::get < 1 > (corr_prediction);
+	U->predicted_value = result.predicted_value;
 	U->predhcvp = true;
       }
   }
       /** END FOR HCVP **/
 #endif
 #ifdef VSEPON
-  getPredVSEP (U, predicted_value, seq_no);
+  getPredVSEP (U, result.predicted_value, seq_no);
 #endif
 #ifdef VTAGEON
-  getPredVtage (U, predicted_value);
+  getPredVtage (U, result.predicted_value);
 #endif
-U->predicted_value = predicted_value;
+U->predicted_value = result.predicted_value;
 
-  U->predicted = (U->predstride || U->predhcvp || U->predvtage || U->predvsep);
-  return (U->predicted);
+  result.speculate = (U->predstride || U->predhcvp || U->predvtage || U->predvsep);
+  return result;
 }
 
 /////////Update of  VTAGE
