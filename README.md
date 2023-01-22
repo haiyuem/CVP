@@ -6,7 +6,7 @@ This page only documents changes from the original CVP infrastructure. For origi
 This branch uses the original predictor that comes with the CVP simulator. This is the winner predictor of the 2018 competition. For a simpler self-written predictor, see branch [intel64_lastloadpred](https://github.com/haiyuem/CVP/tree/intel64_lastloadpred). 
 
 ## Changes for Intel64 traces
-This study uses PIN tool (TODO: link) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
+This study uses [PIN tool](https://github.com/haiyuem/pintool) to generate traces that are fed into the CVP simulator. Becasue PIN tool runs on a Intel64 machine, all instructions are Intel64 and thus require some changes on the original simulator. 
 
 ### New Trace Format
 ```Trace Format :
