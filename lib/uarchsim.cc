@@ -169,7 +169,7 @@ void uarchsim_t::step(db_t *inst)
    while (!window.empty() && (fetch_cycle >= window.peekhead().retire_cycle)) {
       window_t w = window.pop();
       if (VP_ENABLE && !VP_PERFECT)
-         updatePredictor(w.seq_no, w.addr, w.value, w.latency);
+         updatePredictor(w.seq_no, w.pc, w.addr, w.value, w.latency);
    }
  
    // CVP variables
@@ -395,6 +395,7 @@ void uarchsim_t::step(db_t *inst)
    // Manage window: dispatch.
    /////////////////////////////
    window.push({MAX(exec_cycle, (window.empty() ? 0 : window.peektail().retire_cycle)),
+               inst->pc,
                seq_no,
                ((inst->is_load || inst->is_store) ? inst->addr : 0xDEADBEEF),
                ((inst->D.valid && (inst->D.log_reg != RFFLAGS)) ? inst->mem_load_val : 0xDEADBEEF),

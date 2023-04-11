@@ -152,6 +152,7 @@ void speculativeUpdate(uint64_t seq_no,    		// dynamic micro-instruction # (sta
 //
 extern
 void updatePredictor(uint64_t seq_no,		// dynamic micro-instruction #
+			 uint64_t pc, //pc of the instruction
 		     uint64_t actual_addr,	// load or store address (0xdeadbeef if not a load or store instruction)
 		     uint64_t actual_value,	// value of destination register (0xdeadbeef if instr. is not eligible for value prediction)
 		     uint64_t actual_latency);	// actual execution latency of instruction

@@ -37,6 +37,7 @@ using namespace std;
 
 struct window_t {
    uint64_t retire_cycle;
+   uint64_t pc;
    uint64_t seq_no;
    uint64_t addr;
    uint64_t value;
